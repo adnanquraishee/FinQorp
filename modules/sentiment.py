@@ -1,31 +1,60 @@
-from textblob import TextBlob
+# modules/sentiment.py
 import matplotlib.pyplot as plt
+from textblob import TextBlob
+from modules import data_fetch
 
-def analyze_sentiment(headlines):
+def analyze_sentiment(company_name: str):
+    """
+    Analyze sentiment of recent news headlines for a company.
+    Returns (summary string, matplotlib figure)
+    """
     try:
+        headlines = data_fetch.get_headlines(company_name)
+
+        # Handle dict or string headline formats
         if not headlines:
-            return "No headlines to analyze.", None
+            return "No recent headlines found.", None
+
+        processed_headlines = []
+        for h in headlines:
+            if isinstance(h, dict):
+                if 'title' in h:
+                    processed_headlines.append(h['title'])
+                elif 'headline' in h:
+                    processed_headlines.append(h['headline'])
+            elif isinstance(h, str):
+                processed_headlines.append(h)
+
+        if not processed_headlines:
+            return "No valid text headlines found.", None
 
         sentiments = []
-        for h in headlines:
-            if isinstance(h, str):
-                sentiments.append(TextBlob(h).sentiment.polarity)
+        for headline in processed_headlines:
+            blob = TextBlob(str(headline))
+            sentiments.append(blob.sentiment.polarity)
 
-        if not sentiments:
-            return "No valid text data for sentiment analysis.", None
+        # Categorize sentiments
+        positive = sum(1 for s in sentiments if s > 0.1)
+        negative = sum(1 for s in sentiments if s < -0.1)
+        neutral = len(sentiments) - positive - negative
 
-        avg_sentiment = sum(sentiments) / len(sentiments)
-        sentiment_summary = f"**Average Sentiment Score:** {avg_sentiment:.2f}  \n"
-        sentiment_summary += "🟢 Positive" if avg_sentiment > 0 else "🔴 Negative" if avg_sentiment < 0 else "⚪ Neutral"
+        summary = (
+            f"📰 Analyzed {len(sentiments)} headlines\n\n"
+            f"😊 Positive: {positive}\n"
+            f"😐 Neutral: {neutral}\n"
+            f"😞 Negative: {negative}"
+        )
 
-        fig, ax = plt.subplots(figsize=(5, 3))
-        ax.hist(sentiments, bins=10, color="skyblue", edgecolor="black")
-        ax.set_title("Sentiment Distribution", fontsize=10)
-        ax.set_xlabel("Sentiment Score")
-        ax.set_ylabel("Frequency")
-        plt.tight_layout()
+        # Plot
+        labels = ['Positive', 'Neutral', 'Negative']
+        sizes = [positive, neutral, negative]
+        colors = ['#4CAF50', '#FFC107', '#F44336']
 
-        return sentiment_summary, fig
+        fig, ax = plt.subplots(figsize=(4, 4))
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
+        ax.set_title(f"Sentiment — {company_name}")
+
+        return summary, fig
 
     except Exception as e:
         return f"Error analyzing sentiment: {e}", None
