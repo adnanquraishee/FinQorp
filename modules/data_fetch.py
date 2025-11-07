@@ -13,7 +13,7 @@ def resolve_ticker(query: str) -> str:
     return query.strip().upper()
 
 
-def get_price_history(ticker: str, period: str = "6mo", interval: str = "1d") -> pd.DataFrame:
+def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -> pd.DataFrame:
     """
     Fetch and clean historical stock price data using yfinance.
 

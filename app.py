@@ -1,71 +1,62 @@
-# app.py
 import streamlit as st
 from modules import data_fetch, sentiment, forecast
 
 st.set_page_config(page_title="FinQorp Stock Dashboard", layout="wide")
-
 st.title("📊 FinQorp — Stock Market Insights Dashboard")
 
-# --- Sidebar ---
+# Sidebar Input
 st.sidebar.header("Enter Company Name or Ticker")
 company_input = st.sidebar.text_input("Company Name or Ticker", value="AAPL")
 
 if st.sidebar.button("Analyze"):
-    with st.spinner("Fetching stock data and news..."):
+    with st.spinner("Fetching stock data and forecasts..."):
         try:
-            # 1️⃣ Fetch stock data (auto-resolves ticker from company name if needed)
             result = data_fetch.get_stock_data(company_input)
+            stock_data = result["data"] if isinstance(result, dict) else result
 
-            # Handle if get_stock_data returns dict or dataframe
-            if isinstance(result, dict):
-                if 'data' not in result or result['data'] is None or result['data'].empty:
-                    st.error(f"❌ Could not find stock data for '{company_input}'. Please check the name or ticker.")
-                    st.stop()
-                stock_data = result['data']
-                ticker = result.get('ticker', company_input.upper())
-                company_name = result.get('company_name', ticker)
-            elif isinstance(result, type(None)) or result.empty:
-                st.error(f"❌ No data found for '{company_input}'.")
+            if stock_data is None or stock_data.empty:
+                st.error("❌ Could not fetch data.")
                 st.stop()
-            else:
-                stock_data = result
-                ticker = company_input.upper()
-                company_name = ticker
 
-            st.success(f"✅ Data fetched successfully for {company_name} ({ticker})")
+            stock_data = stock_data.reset_index()
+            if "Date" not in stock_data.columns:
+                stock_data.rename(columns={stock_data.columns[0]: "Date"}, inplace=True)
 
-            # --- Recent Stock Data ---
-            st.subheader(f"📅 Recent Stock Data — {ticker}")
+            st.success(f"✅ Data fetched successfully for {company_input}")
+            st.subheader("📅 Recent Stock Data")
             st.dataframe(stock_data.tail())
 
-            # --- Headlines ---
-            st.subheader(f"📰 Latest News Headlines for {company_name}")
-            headlines = data_fetch.get_headlines(ticker)
+            # Headlines
+            st.subheader("📰 Latest News Headlines")
+            headlines = data_fetch.get_headlines(company_input)
             if headlines:
                 for i, h in enumerate(headlines[:10], start=1):
-                    st.markdown(f"**{i}.** {h}")
+                    if isinstance(h, dict):
+                        st.markdown(f"**{i}.** [{h.get('title', '')}]({h.get('link', '#')})")
+                    else:
+                        st.markdown(f"**{i}.** {h}")
             else:
-                st.warning("No recent headlines found for this company.")
+                st.warning("No headlines found.")
 
-            # --- Sentiment Analysis ---
+            # Sentiment
             st.subheader("💭 Market Sentiment Overview")
-            sentiment_summary, sentiment_fig = sentiment.analyze_sentiment(company_name)
-
-            if sentiment_fig is not None:
-                st.pyplot(sentiment_fig)
-            elif sentiment_summary:
-                st.markdown(sentiment_summary)
+            summary, fig = sentiment.analyze_sentiment(company_input)
+            if fig:
+                st.pyplot(fig)
+            elif summary:
+                st.markdown(summary)
             else:
-                st.warning("No sentiment data available for this company.")
+                st.warning("No sentiment data available.")
 
-            # --- Forecast Section ---
-            st.subheader("📈 Stock Price Forecast (Next 30 Days)")
-            forecast_fig = forecast.generate_forecast(stock_data)
-
-            if forecast_fig is not None:
-                st.pyplot(forecast_fig)
+            # Forecast (Grid of 4)
+            st.subheader("📈 Forecast Models (Next 30 Days)")
+            df, preds, future_dates = forecast.generate_all_forecasts(stock_data)
+            if preds:
+                fig = forecast.plot_forecasts_grid(df, preds, future_dates)
+                st.pyplot(fig)
             else:
-                st.warning("Forecast model could not be generated. Try again later.")
+                st.warning("⚠️ Forecast models returned no data.")
+            
 
         except Exception as e:
-            st.error(f"❌ Unexpected error: {str(e)}")
+            st.error(f"❌ Unexpected error: {e}")
