@@ -1,91 +1,115 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from textblob import TextBlob
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
 from modules import data_fetch
+import nltk
+nltk.download("vader_lexicon", quiet=True)
+
+# Load FinBERT model once
+_tokenizer = AutoTokenizer.from_pretrained("yiyanghkust/finbert-tone")
+_model = AutoModelForSequenceClassification.from_pretrained("yiyanghkust/finbert-tone")
+_labels = ["negative", "neutral", "positive"]
+
+def finbert_score(text):
+    """Compute FinBERT sentiment score (-1 to 1)."""
+    try:
+        inputs = _tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            logits = _model(**inputs).logits
+        probs = torch.nn.functional.softmax(logits, dim=-1)
+        return float(probs[0, 2] - probs[0, 0])  # Positive - Negative
+    except Exception:
+        return 0.0
 
 
 def analyze_sentiment(company_name: str):
     """
-    Analyze sentiment of recent news headlines for a company
-    and visualize results as:
-    1️⃣ A horizontal bar (Bearish → Bullish sentiment index)
-    2️⃣ A pie chart of sentiment distribution
-    Returns (summary string, matplotlib figure)
+    Analyze recent news sentiment for a company using both
+    VADER (lexical) and FinBERT (contextual financial) models.
+    Returns (summary string, matplotlib figure).
     """
     try:
-        # --- Fetch latest headlines ---
         headlines = data_fetch.get_headlines(company_name)
 
         if not headlines:
             return "No recent headlines found.", None
 
-        # Extract headline text
-        processed_headlines = []
+        # Normalize text
+        valid = []
+        seen = set()
         for h in headlines:
+            title = ""
             if isinstance(h, dict):
-                if "title" in h:
-                    processed_headlines.append(h["title"])
-                elif "headline" in h:
-                    processed_headlines.append(h["headline"])
-            elif isinstance(h, str):
-                processed_headlines.append(h)
+                title = h.get("title", "") or ""
+            else:
+                title = str(h)
+            title = title.strip()
+            if not title or len(title) < 8 or title in seen:
+                continue
+            seen.add(title)
+            valid.append(title)
 
-        if not processed_headlines:
+        if not valid:
             return "No valid text headlines found.", None
 
-        # --- Compute sentiment polarity for each headline ---
-        sentiments = [TextBlob(str(h)).sentiment.polarity for h in processed_headlines]
+        # Initialize analyzers
+        sia = SentimentIntensityAnalyzer()
 
-        # --- Compute sentiment stats ---
-        avg_sentiment = np.mean(sentiments)
-        positive = sum(1 for s in sentiments if s > 0.1)
-        negative = sum(1 for s in sentiments if s < -0.1)
-        neutral = len(sentiments) - positive - negative
+        vader_scores = [sia.polarity_scores(t)["compound"] for t in valid]
+        finbert_scores = [finbert_score(t) for t in valid]
+
+        # Combine (FinBERT weighted 0.7, VADER 0.3)
+        hybrid_scores = [0.7 * f + 0.3 * v for f, v in zip(finbert_scores, vader_scores)]
+
+        avg_sentiment = np.mean(hybrid_scores)
+        positive = sum(1 for s in hybrid_scores if s > 0.1)
+        negative = sum(1 for s in hybrid_scores if s < -0.1)
+        neutral = len(hybrid_scores) - positive - negative
+        confidence = min(1.0, len(valid) / 40.0)
+
+        # Tone label
+        if avg_sentiment > 0.05:
+            tone = "Bullish 😄"
+            color = "#32D600"
+        elif avg_sentiment < -0.05:
+            tone = "Bearish 😞"
+            color = "#D40000"
+        else:
+            tone = "Neutral 😐"
+            color = "#FFCB20"
 
         summary = (
-            f"📰 Analyzed {len(sentiments)} headlines\n\n"
-            f"😊 Positive: {positive}\n"
-            f"😐 Neutral: {neutral}\n"
-            f"😞 Negative: {negative}\n\n"
-            f"**Overall Sentiment:** {avg_sentiment:.2f}"
+            f"**Company Sentiment — {company_name}**\n\n"
+            f"📰 Headlines analyzed: {len(valid)}\n"
+            f"📈 Average Sentiment: {avg_sentiment:.3f}\n"
+            f"💬 Tone: {tone}\n"
+            f"🔍 Confidence: {confidence:.2f}\n\n"
+            f"Hybrid sentiment blends quick lexical (VADER) and deep financial context (FinBERT) "
+            f"for a more accurate emotional snapshot of market tone."
         )
 
-        # --- Determine sentiment label and color (FinQorp palette) ---
-        if avg_sentiment > 0.05:
-            sentiment_label = "Positive 😊"
-            color = "#32D600"  # FinQorp green
-        elif avg_sentiment < -0.05:
-            sentiment_label = "Negative 😞"
-            color = "#D40000"  # FinQorp red
-        else:
-            sentiment_label = "Neutral 😐"
-            color = "#FFCB20"  # FinQorp gold
-
-        # --- Create combined figure ---
-        fig, axes = plt.subplots(1, 2, figsize=(9, 2.5))  # 🔹 Side-by-side: bar + pie
-
-        # ===== Chart 1: Sentiment Bar (Bearish → Bullish) =====
+        # ---- Visualization (Side-by-Side Bar + Pie) ----
+        fig, axes = plt.subplots(1, 2, figsize=(8.5, 2.3))
+        # Bar
         ax = axes[0]
         ax.barh([0], [avg_sentiment], color=color, height=0.35)
         ax.set_xlim(-1, 1)
         ax.set_yticks([])
         ax.set_xticks([-1, 0, 1])
         ax.set_xticklabels(["Bearish", "Neutral", "Bullish"], color="white", fontsize=8)
-        ax.set_title(
-            f"Sentiment Index — {company_name}\n{sentiment_label} ({avg_sentiment:.2f})",
-            color="white", fontsize=9
-        )
+        ax.set_title(f"Sentiment Index — {tone}", color="white", fontsize=9)
         ax.set_facecolor("black")
         for spine in ax.spines.values():
             spine.set_color("white")
         ax.grid(True, color="#333333", alpha=0.25)
 
-        # ===== Chart 2: Sentiment Distribution (Pie) =====
+        # Pie
         ax2 = axes[1]
         sizes = [positive, neutral, negative]
         labels = ["Positive", "Neutral", "Negative"]
-        colors = ["#32D600", "#FFCB20", "#D40000"]  # Updated FinQorp palette
-
+        colors = ["#32D600", "#FFCB20", "#D40000"]
         ax2.pie(
             sizes,
             labels=labels,
@@ -97,9 +121,8 @@ def analyze_sentiment(company_name: str):
         ax2.set_title("Sentiment Breakdown", color="white", fontsize=9)
         ax2.set_facecolor("black")
 
-        # ===== Layout & Theme =====
         fig.patch.set_facecolor("black")
-        plt.tight_layout(pad=1.2)
+        plt.tight_layout(pad=1.0)
 
         return summary, fig
 

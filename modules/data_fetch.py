@@ -77,11 +77,12 @@ def get_financials(ticker: str):
 def get_headlines(topic: str = None, limit: int = 20):
     """
     Fetch latest Google News headlines.
-    Tries GoogleNews library → falls back to Google RSS.
+    Cleans up empty, duplicate, or invalid results.
+    Tries GoogleNews → falls back to Google RSS feed.
     """
     headlines = []
 
-    # --- Try GoogleNews package ---
+    # --- Primary: GoogleNews package ---
     try:
         gn = GoogleNews(lang='en', region='IN')
         search_query = topic if topic else "Business"
@@ -90,12 +91,30 @@ def get_headlines(topic: str = None, limit: int = 20):
 
         if results:
             for item in results:
-                headlines.append({
-                    "title": item.get("title", "No Title"),
-                    "link": item.get("link", "#")
-                })
-            print(f"✅ Found {len(headlines)} headlines using GoogleNews.")
-            return headlines
+                title = item.get("title", "").strip()
+                link = item.get("link", "#").strip()
+
+                # ✅ Clean: remove blanks, weird URLs, or malformed titles
+                if (
+                    not title
+                    or title.lower().startswith("http")
+                    or "..." in title
+                    or len(title) < 5
+                ):
+                    continue
+
+                headlines.append({"title": title, "link": link})
+
+            # ✅ Remove duplicates safely
+            unique_titles = set()
+            clean_headlines = []
+            for h in headlines:
+                if h["title"] not in unique_titles:
+                    unique_titles.add(h["title"])
+                    clean_headlines.append(h)
+
+            print(f"✅ Found {len(clean_headlines)} clean headlines using GoogleNews.")
+            return clean_headlines
         else:
             print("⚠️ GoogleNews returned no results.")
     except Exception as e:
@@ -103,26 +122,44 @@ def get_headlines(topic: str = None, limit: int = 20):
 
     # --- Fallback: Google News RSS ---
     try:
-        topic_url = (
-            f"https://news.google.com/rss/headlines/section/topic/{topic.upper()}"
-            if topic else "https://news.google.com/rss"
-        )
-        response = requests.get(topic_url)
+        topic_query = topic.replace(" ", "+") if topic else "Business"
+        topic_url = f"https://news.google.com/rss/search?q={topic_query}"
+        response = requests.get(topic_url, timeout=10)
+
         if response.status_code == 200:
-            from bs4 import BeautifulSoup
             soup = BeautifulSoup(response.content, "xml")
             items = soup.find_all("item")
             for item in items[:limit]:
                 title = item.title.text.strip()
                 link = item.link.text.strip()
+
+                if (
+                    not title
+                    or title.lower().startswith("http")
+                    or "..." in title
+                    or len(title) < 5
+                ):
+                    continue
+
                 headlines.append({"title": title, "link": link})
-            print(f"✅ Fallback RSS fetched {len(headlines)} headlines.")
+
+            # Remove duplicates again (in case of overlap)
+            unique_titles = set()
+            clean_headlines = []
+            for h in headlines:
+                if h["title"] not in unique_titles:
+                    unique_titles.add(h["title"])
+                    clean_headlines.append(h)
+
+            print(f"✅ Fallback RSS fetched {len(clean_headlines)} clean headlines.")
+            return clean_headlines
         else:
-            print(f"⚠️ RSS fetch failed with status code {response.status_code}")
+            print(f"⚠️ RSS fetch failed: {response.status_code}")
     except Exception as e:
         print(f"⚠️ RSS fallback failed: {e}")
 
-    return headlines
+    return []
+
 
 
 # ------------------------------------------------------------
