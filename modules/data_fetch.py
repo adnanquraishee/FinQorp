@@ -3,6 +3,7 @@ import pandas as pd
 from GoogleNews import GoogleNews
 import requests
 from bs4 import BeautifulSoup
+# NOTE: The get_ticker_from_name function has been moved to ticker_resolver.py
 
 # ------------------------------------------------------------
 # ✅ STOCK DATA FETCH
@@ -14,6 +15,7 @@ def resolve_ticker(query: str) -> str:
 
 
 def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -> pd.DataFrame:
+    # ... (existing content of get_price_history remains the same)
     """
     Fetch and clean historical stock price data using yfinance.
 
@@ -27,7 +29,6 @@ def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -
         hist = t.history(period=period, interval=interval)
 
         if hist.empty:
-            print("⚠️ No data returned from yfinance.")
             return pd.DataFrame()
 
         # Ensure DatetimeIndex
@@ -42,11 +43,9 @@ def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -
         # Remove duplicates & ensure numeric
         hist = hist.apply(pd.to_numeric, errors='coerce').dropna()
 
-        print(f"✅ Successfully fetched {len(hist)} rows for {ticker}.")
         return hist
 
     except Exception as e:
-        print(f"⚠️ Error fetching price history for {ticker}: {e}")
         return pd.DataFrame()
 
 
@@ -55,18 +54,16 @@ def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -
 # ------------------------------------------------------------
 
 def get_financials(ticker: str):
+    # ... (existing content of get_financials remains the same)
     """Fetch company financials using yfinance."""
     try:
         t = yf.Ticker(ticker)
         fin = t.financials
         if fin is not None and not fin.empty:
-            print(f"✅ Financials fetched for {ticker}.")
             return fin
         else:
-            print(f"⚠️ No financials found for {ticker}.")
             return None
     except Exception as e:
-        print(f"⚠️ Error fetching financials: {e}")
         return None
 
 
@@ -75,6 +72,7 @@ def get_financials(ticker: str):
 # ------------------------------------------------------------
 
 def get_headlines(topic: str = None, limit: int = 20):
+    # ... (existing content of get_headlines remains the same)
     """
     Fetch latest Google News headlines.
     Cleans up empty, duplicate, or invalid results.
@@ -113,12 +111,11 @@ def get_headlines(topic: str = None, limit: int = 20):
                     unique_titles.add(h["title"])
                     clean_headlines.append(h)
 
-            print(f"✅ Found {len(clean_headlines)} clean headlines using GoogleNews.")
             return clean_headlines
         else:
-            print("⚠️ GoogleNews returned no results.")
+            pass # Continue to fallback
     except Exception as e:
-        print(f"⚠️ GoogleNews failed: {e}")
+        pass # Continue to fallback
 
     # --- Fallback: Google News RSS ---
     try:
@@ -151,15 +148,13 @@ def get_headlines(topic: str = None, limit: int = 20):
                     unique_titles.add(h["title"])
                     clean_headlines.append(h)
 
-            print(f"✅ Fallback RSS fetched {len(clean_headlines)} clean headlines.")
             return clean_headlines
         else:
-            print(f"⚠️ RSS fetch failed: {response.status_code}")
+            pass
     except Exception as e:
-        print(f"⚠️ RSS fallback failed: {e}")
+        pass
 
     return []
-
 
 
 # ------------------------------------------------------------
@@ -173,19 +168,3 @@ def get_stock_data(symbol: str):
     ticker = resolve_ticker(symbol)
     data = get_price_history(ticker)
     return data
-
-def get_ticker_from_name(company_name):
-    """
-    Use Yahoo Finance search API to find the ticker for a given company name.
-    Returns the first matching ticker.
-    """
-    try:
-        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={company_name}"
-        response = requests.get(url)
-        results = response.json().get("quotes", [])
-        if results:
-            return results[0]["symbol"]
-    except Exception as e:
-        print("Ticker lookup error:", e)
-    return None
-

@@ -2,19 +2,19 @@ import yfinance as yf
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from textblob import TextBlob
+from textblob import TextBlob # Keep import but remove usage
 from modules import data_fetch, fundamentals
 
 
 # =========================================================
-# 🔹 AI SUMMARY GENERATOR — Now Includes Fundamentals
+# 🔹 AI SUMMARY GENERATOR — News/Sentiment Logic Removed
 # =========================================================
 def generate_ai_summary(company_name: str):
     """
-    Generate an advanced, AI-style financial summary combining:
+    Generate an advanced, AI-style financial summary containing:
     - Stock trend, volatility, and momentum
-    - News sentiment and investor tone
     - Core financial metrics and ratios from fundamentals
+    (News and Sentiment sections are removed as requested)
     """
     try:
         # --- Fetch market data ---
@@ -43,18 +43,10 @@ def generate_ai_summary(company_name: str):
         volatility = float(data["Return"].std() * 100)
         total_change = float(((data["Close"].iloc[-1] / data["Close"].iloc[0]) - 1) * 100)
 
-        # --- Fetch sentiment from headlines ---
-        headlines = data_fetch.get_headlines(company_name)
-        valid_headlines = []
-        for h in headlines:
-            title = h["title"] if isinstance(h, dict) else str(h)
-            if not title or not title.strip() or title.lower().startswith("http"):
-                continue
-            valid_headlines.append(title.strip())
-
-        sentiments = [TextBlob(h).sentiment.polarity for h in valid_headlines]
-        avg_sentiment = float(np.mean(sentiments)) if sentiments else 0
-
+        # --- NEWS AND SENTIMENT LOGIC REMOVED ---
+        # Initialize placeholders for metrics that relied on sentiment (now based on trend)
+        avg_sentiment = 0.0
+        
         # --- Fetch Fundamentals ---
         try:
             metrics, _ = fundamentals.get_fundamentals(company_name)
@@ -68,11 +60,14 @@ def generate_ai_summary(company_name: str):
 
         # --- Interpretations ---
         trend = "📈 Upward" if total_change > 0 else "📉 Downward"
+        
+        # Tone simplified to reflect stock trend rather than external news sentiment
         tone = (
-            "bullish 😄" if avg_sentiment > 0.1 else
-            "bearish 😟" if avg_sentiment < -0.1 else
-            "neutral 😐"
+            "positive" if total_change > 5 else
+            "negative" if total_change < -5 else
+            "stable"
         )
+        
         risk = (
             "low volatility ✅" if volatility < 1 else
             "moderate volatility ⚙️" if volatility < 2 else
@@ -87,11 +82,8 @@ def generate_ai_summary(company_name: str):
             f"indicating {('a stable trading range' if volatility < 1 else 'moderate price fluctuations typical of an active stock' if volatility < 2 else 'a highly reactive and risky movement pattern')}."
         )
 
-        sentiment_part = (
-            f"News sentiment analysis suggests a **{tone}** tone "
-            f"(average polarity: {avg_sentiment:.2f}), reflecting how media narratives are currently shaping investor perception."
-        )
-
+        # REMOVED SENTIMENT PART PARAGRAPH
+        
         # --- Smarter Fundamentals Interpretation ---
         try:
             # Parse numeric values safely
@@ -140,7 +132,7 @@ def generate_ai_summary(company_name: str):
 
 
         conclusion = (
-            f"In summary, **{company_name}** exhibits {('positive momentum and sound financial fundamentals' if total_change > 0 and avg_sentiment > 0 else 'mixed signals between market tone and internal performance')}."
+            f"In summary, **{company_name}** exhibits {('positive momentum and sound financial fundamentals' if total_change > 0 and (pe_val and pe_val > 0) else 'mixed signals between market tone and internal performance')}."
         )
 
         # --- Combine everything into AI-style report ---
@@ -149,11 +141,10 @@ def generate_ai_summary(company_name: str):
             f"📊 **Trend:** {trend} over 6 months (**{total_change:.2f}%** change)\n"
             f"📈 **Average Daily Return:** {avg_return:.2f}%\n"
             f"⚙️ **Volatility:** {risk}\n"
-            f"💬 **Sentiment:** {tone} (avg. polarity: {avg_sentiment:.2f})\n"
+            f"💬 **Recent Tone:** {tone} (based on 6-month price action)\n"
             f"💰 **Fundamentals:** P/E = {pe}, ROE = {roe}, D/E = {de}, Margin = {pm}, Yield = {dy}\n\n"
             f"🧠 **AI Analysis:**\n\n"
             f"{overview}\n\n"
-            f"{sentiment_part}\n\n"
             f"{fundamentals_part}\n\n"
             f"💡 **Insight:** {conclusion}"
         )
