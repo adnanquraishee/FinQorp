@@ -1,155 +1,177 @@
 import yfinance as yf
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from textblob import TextBlob # Keep import but remove usage
-from modules import data_fetch, fundamentals
-
+import traceback
 
 # =========================================================
-# 🔹 AI SUMMARY GENERATOR — News/Sentiment Logic Removed
+# 🔹 Helper Functions
 # =========================================================
-def generate_ai_summary(company_name: str):
+
+def _format_large_number(num):
+    """Formats large numbers (e.g., Market Cap) into B/T."""
+    if pd.isna(num) or num == "N/A": return "N/A"
+    try:
+        num = float(num)
+        if abs(num) > 1_000_000_000_000:
+            return f"${num / 1_000_000_000_000:.2f}T"
+        elif abs(num) > 1_000_000_000:
+            return f"${num / 1_000_000_000:.2f}B"
+        elif abs(num) > 1_000_000:
+            return f"${num / 1_000_000:.2f}M"
+        else:
+            return f"${num:,.2f}"
+    except (ValueError, TypeError):
+        return "N/A"
+
+def _format_ratio(num, is_percent=False):
+    """Formats ratios and percentages neatly."""
+    if pd.isna(num) or num == "N/A": return "N/A"
+    try:
+        num = float(num)
+        if is_percent:
+            return f"{num * 100:.2f}%"
+        return f"{num:.2f}"
+    except (ValueError, TypeError):
+        return "N/A"
+
+# =========================================================
+# 🔹 AI SUMMARY GENERATOR (v2.2)
+# =========================================================
+
+def generate_ai_summary(ticker: str):
     """
-    Generate an advanced, AI-style financial summary containing:
-    - Stock trend, volatility, and momentum
-    - Core financial metrics and ratios from fundamentals
-    (News and Sentiment sections are removed as requested)
+    Generates an advanced, AI-style financial summary by synthesizing
+    company profile, market trends, technicals, and fundamentals.
     """
     try:
-        # --- Fetch market data ---
-        data = yf.download(company_name, period="6mo", interval="1d", progress=False)
-        if data is None or not isinstance(data, pd.DataFrame) or data.empty:
-            data = yf.download(company_name, period="1mo", interval="1d", progress=False)
+        # --- 1. Data Fetching ---
+        company = yf.Ticker(ticker)
+        info = company.info
+        if not info or 'shortName' not in info:
+            return f"⚠️ No company profile data found for **{ticker}**. The symbol may be delisted or invalid."
+        hist = company.history(period="1y")
+        if hist.empty:
+            return f"⚠️ Could not retrieve price history for **{ticker}**."
 
-        # Normalize column names
-        if isinstance(data.columns, pd.MultiIndex):
-            data.columns = [c[0] if isinstance(c, tuple) else c for c in data.columns]
+        # --- 2. Extract Data for Narrative ---
+        short_name = info.get('shortName', ticker)
+        summary = info.get('longBusinessSummary', 'No business summary available.')
+        
+        pe_ratio = _format_ratio(info.get('trailingPE'))
+        fwd_pe_ratio = _format_ratio(info.get('forwardPE'))
+        peg_ratio = _format_ratio(info.get('pegRatio'))
+        roe = _format_ratio(info.get('returnOnEquity'), is_percent=True)
+        de_ratio = f"{_format_ratio(info.get('debtToEquity'))}%"
+        margin = _format_ratio(info.get('profitMargins'), is_percent=True)
+        dividend_yield = _format_ratio(info.get('dividendYield'), is_percent=True)
+        beta = _format_ratio(info.get('beta'))
+
+        # --- 3. Calculate Market & Technical Data ---
+        current_price = hist['Close'].iloc[-1]
+        
+        hist_6m = hist.tail(126) 
+        price_6m_ago = hist_6m['Close'].iloc[0]
+        change_6m_pct = ((current_price / price_6m_ago) - 1) * 100
+        
+        hist_10d = hist.tail(10)
+        price_10d_ago = hist_10d['Close'].iloc[0]
+        change_10d_pct = ((current_price / price_10d_ago) - 1) * 100
+
+        volatility = _format_ratio(hist_6m['Close'].pct_change().std() * np.sqrt(252), is_percent=True)
+        sma_50 = hist['Close'].rolling(50).mean().iloc[-1]
+        sma_200 = hist['Close'].rolling(200).mean().iloc[-1]
+
+        # --- 4. Generate AI Narrative ---
+
+        trend_6m_desc = "strong upward" if change_6m_pct > 15 else "upward" if change_6m_pct > 0 else "downward" if change_6m_pct < -5 else "stable"
+        trend_10d_desc = "positive" if change_10d_pct > 0 else "negative"
+        
+        market_narrative = (
+            f"Over the past 6 months, the stock has shown a **{trend_6m_desc} trend** ({change_6m_pct:.2f}%). "
+            f"Recent short-term (10-day) momentum has been **{trend_10d_desc}** ({change_10d_pct:.2f}%). "
+            f"Annualized volatility stands at **{volatility}**, which indicates its price fluctuation."
+        )
+
+        if pd.isna(sma_50) or pd.isna(sma_200):
+            tech_narrative = "Insufficient data for full technical analysis."
         else:
-            data.columns = [str(c).strip().title() for c in data.columns]
-
-        if "Close" not in data.columns:
-            for alt in ["Adj Close", "Close Price", "close", "adj close"]:
-                if alt in data.columns:
-                    data.rename(columns={alt: "Close"}, inplace=True)
-                    break
-
-        # --- If no price data available ---
-        if data.empty or "Close" not in data.columns:
-            return f"⚠️ Could not retrieve sufficient price data for **{company_name}**."
-
-        data["Return"] = data["Close"].pct_change().fillna(0)
-        avg_return = float(data["Return"].mean() * 100)
-        volatility = float(data["Return"].std() * 100)
-        total_change = float(((data["Close"].iloc[-1] / data["Close"].iloc[0]) - 1) * 100)
-
-        # --- NEWS AND SENTIMENT LOGIC REMOVED ---
-        # Initialize placeholders for metrics that relied on sentiment (now based on trend)
-        avg_sentiment = 0.0
-        
-        # --- Fetch Fundamentals ---
-        try:
-            metrics, _ = fundamentals.get_fundamentals(company_name)
-            pe = metrics.get("P/E Ratio", "N/A")
-            roe = metrics.get("ROE", "N/A")
-            de = metrics.get("Debt-to-Equity", "N/A")
-            pm = metrics.get("Profit Margin", "N/A")
-            dy = metrics.get("Dividend Yield", "N/A")
-        except Exception as e:
-            pe = roe = de = pm = dy = "N/A"
-
-        # --- Interpretations ---
-        trend = "📈 Upward" if total_change > 0 else "📉 Downward"
-        
-        # Tone simplified to reflect stock trend rather than external news sentiment
-        tone = (
-            "positive" if total_change > 5 else
-            "negative" if total_change < -5 else
-            "stable"
-        )
-        
-        risk = (
-            "low volatility ✅" if volatility < 1 else
-            "moderate volatility ⚙️" if volatility < 2 else
-            "high volatility ⚠️"
-        )
-
-        # --- Generate narrative paragraphs ---
-        overview = (
-            f"Over the past six months, **{company_name}** has shown a {trend.lower()} trend "
-            f"with a total change of **{total_change:.2f}%** and an average daily return of **{avg_return:.2f}%**. "
-            f"Volatility remains {risk.replace('⚙️','').replace('✅','').replace('⚠️','')}, "
-            f"indicating {('a stable trading range' if volatility < 1 else 'moderate price fluctuations typical of an active stock' if volatility < 2 else 'a highly reactive and risky movement pattern')}."
-        )
-
-        # REMOVED SENTIMENT PART PARAGRAPH
-        
-        # --- Smarter Fundamentals Interpretation ---
-        try:
-            # Parse numeric values safely
-            pe_val = float(str(pe).replace("N/A", "").replace("%", "").strip()) if "N/A" not in str(pe) else None
-            roe_val = float(str(roe).replace("%", "").strip()) if "N/A" not in str(roe) else None
-            de_val = float(str(de).replace("%", "").strip()) if "N/A" not in str(de) else None
-            pm_val = float(str(pm).replace("%", "").strip()) if "N/A" not in str(pm) else None
-            dy_val = float(str(dy).replace("%", "").strip()) if "N/A" not in str(dy) else None
-
-            # Context-based evaluation
-            pe_eval = "attractive valuation" if pe_val and pe_val < 20 else \
-                    "fairly valued" if pe_val and pe_val <= 35 else \
-                    "richly valued" if pe_val else "valuation unavailable"
-
-            roe_eval = "strong efficiency in shareholder returns" if roe_val and roe_val > 15 else \
-                        "moderate returns" if roe_val and roe_val > 5 else \
-                        "weak profitability" if roe_val is not None else "ROE data unavailable"
-
-            de_eval = "solid financial structure" if de_val and de_val < 1 else \
-                    "moderate leverage" if de_val and de_val <= 2 else \
-                    "high debt exposure" if de_val else "leverage data unavailable"
-
-            pm_eval = "excellent profit margins" if pm_val and pm_val > 20 else \
-                    "healthy margins" if pm_val and pm_val > 10 else \
-                    "thin margins" if pm_val else "margin data unavailable"
-
-            dy_eval = "strong dividend yield" if dy_val and dy_val > 3 else \
-                    "modest dividend payout" if dy_val and dy_val > 0 else \
-                    "no dividend distribution"
-
-            fundamentals_part = (
-                f"Financially, **{company_name}** reports a **P/E ratio of {pe}** "
-                f"({pe_eval}), a **Return on Equity (ROE)** of **{roe}** "
-                f"({roe_eval}), and a **Debt-to-Equity ratio** of **{de}** "
-                f"({de_eval}). Profit margins stand at **{pm}** "
-                f"({pm_eval}), with a dividend yield of **{dy}** "
-                f"({dy_eval}). "
-                f"Overall, these metrics indicate that the company maintains "
-                f"{'strong fundamentals and sustainable profitability' if pm_val and pm_val > 20 else 'a moderate financial footing with room for improvement'}."
-            )
-        except Exception:
-            fundamentals_part = (
-                f"Financial data for **{company_name}** is partially available. "
-                f"Key metrics such as P/E, ROE, and margins could not be fully interpreted."
+            tech_posture = "a bullish posture" if current_price > sma_50 and sma_50 > 200 else \
+                           "a bearish posture" if current_price < sma_50 and sma_50 < 200 else \
+                           "a mixed/transitional posture"
+            beta_val = 1.0 if pd.isna(beta) or beta == "N/A" else float(beta) 
+            beta_desc = "more volatile than" if beta_val > 1.1 else "less volatile than" if beta_val < 0.9 else "in line with"
+            
+            # --- MODIFICATION: Removed all ** from variables ---
+            tech_narrative = (
+                f"From a technical standpoint, the stock is in **{tech_posture}**. "
+                f"It is currently trading at ${current_price:.2f}, which is "
+                f"{('above' if current_price > sma_50 else 'below')} its 50-day MA (${sma_50:.2f}) "
+                f"and {('above' if current_price > sma_200 else 'below')} its 200-day MA (${sma_200:.2f}). "
+                f"A Beta of {beta} suggests the stock is {beta_desc} the broader market."
             )
 
+        def safe_float(value, default=0.0):
+            try:
+                return float(str(value).replace('%', '').replace('N/A', str(default)))
+            except (ValueError, TypeError):
+                return default
 
-        conclusion = (
-            f"In summary, **{company_name}** exhibits {('positive momentum and sound financial fundamentals' if total_change > 0 and (pe_val and pe_val > 0) else 'mixed signals between market tone and internal performance')}."
+        fwd_pe_val = safe_float(fwd_pe_ratio)
+        pe_val = safe_float(pe_ratio)
+        peg_val = safe_float(peg_ratio)
+        roe_val = safe_float(roe)
+        margin_val = safe_float(margin)
+        div_val = safe_float(dividend_yield)
+
+        val_desc = "potentially undervalued" if fwd_pe_val < pe_val and peg_val < 1 and fwd_pe_val > 0 and peg_val > 0 else \
+                   "appears fully valued" if pe_val > 30 or peg_val > 2 else \
+                   "at a reasonable valuation"
+        profit_desc = "exceptionally strong" if margin_val > 20 and roe_val > 20 else \
+                      "healthy" if margin_val > 10 and roe_val > 15 else \
+                      "an area for improvement"
+        
+        # --- MODIFICATION: Removed all ** from variables ---
+        fundamental_narrative = (
+            f"Fundamentally, the company is at **{val_desc}** with a TTM P/E of {pe_ratio} and a Forward P/E of {fwd_pe_ratio}. "
+            f"Profitability is **{profit_desc}**, with a {margin} profit margin and a {roe} Return on Equity. "
+            f"The financial structure includes a Debt-to-Equity ratio of {de_ratio} and a dividend yield of {dividend_yield}."
         )
 
-        # --- Combine everything into AI-style report ---
-        summary = (
-            f"**{company_name} — AI Market Summary**\n\n"
-            f"📊 **Trend:** {trend} over 6 months (**{total_change:.2f}%** change)\n"
-            f"📈 **Average Daily Return:** {avg_return:.2f}%\n"
-            f"⚙️ **Volatility:** {risk}\n"
-            f"💬 **Recent Tone:** {tone} (based on 6-month price action)\n"
-            f"💰 **Fundamentals:** P/E = {pe}, ROE = {roe}, D/E = {de}, Margin = {pm}, Yield = {dy}\n\n"
-            f"🧠 **AI Analysis:**\n\n"
-            f"{overview}\n\n"
-            f"{fundamentals_part}\n\n"
-            f"💡 **Insight:** {conclusion}"
-        )
+        # --- 5. Synthesize Final Insight ---
+        insight = ""
+        if change_6m_pct > 10 and (pe_val > 35 or peg_val > 2):
+            insight = (f"The market has priced in significant optimism (**{change_6m_pct:.0f}%** 6-mo gain), "
+                       f"and valuations (P/E: {pe_ratio}) appear stretched. This suggests high expectations are already set.")
+        elif change_6m_pct < -5 and roe_val > 15 and margin_val > 10:
+            insight = (f"There appears to be a disconnect: the stock has a negative 6-month trend (**{change_6m_pct:.0f}%**), "
+                       f"but its core fundamentals (ROE: {roe}, Margin: {margin}) remain strong, suggesting a potential misalignment.")
+        elif trend_6m_desc == "stable" and div_val > 2:
+            insight = (f"The stock has provided stability and a solid dividend (**{dividend_yield}**), "
+                       f"making it a potential candidate for income-focused portfolios.")
+        else:
+            insight = (f"The company's market performance (**{trend_6m_desc} trend**) appears "
+                       f"justified by its fundamentals, showing a balanced profile between valuation and profitability.")
 
+        # --- 6. Combine all parts into the final summary ---
+        summary = f"""
+### 🧠 Analysis
+
+**Market & Trend:**
+> {market_narrative}
+
+**Technical Posture:**
+> {tech_narrative}
+
+**Fundamentals:**
+> {fundamental_narrative}
+
+---
+
+### 💡 Analyst Insight
+> **{insight}**
+        """
         return summary
 
     except Exception as e:
-        return f"⚠️ Error generating AI summary: {e}"
+        print(traceback.format_exc()) # For debugging in the console
+        return f"⚠️ An error occurred while generating the AI summary for **{ticker}**: {e}"

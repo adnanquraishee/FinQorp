@@ -48,6 +48,9 @@ class TransformerModel(nn.Module):
 def _prepare_data(df_or_symbol):
     if isinstance(df_or_symbol, pd.DataFrame):
         df = df_or_symbol.copy()
+        # FIX: Ensure 'Date' is a column, not an index, for access later
+        if df.index.name == 'Date' or 'Date' not in df.columns:
+            df = df.reset_index()
     else:
         df = yf.download(df_or_symbol, period="2y", interval="1d", progress=False)
         df = df.reset_index()

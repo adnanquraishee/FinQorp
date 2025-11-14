@@ -15,7 +15,6 @@ def resolve_ticker(query: str) -> str:
 
 
 def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -> pd.DataFrame:
-    # ... (existing content of get_price_history remains the same)
     """
     Fetch and clean historical stock price data using yfinance.
 
@@ -33,12 +32,16 @@ def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -
 
         # Ensure DatetimeIndex
         hist.reset_index(inplace=True)
-        hist['Date'] = pd.to_datetime(hist['Date'])
+        # --- MODIFICATION: Format date for cleaner table display ---
+        hist['Date'] = pd.to_datetime(hist['Date']).dt.strftime('%Y-%m-%d')
         hist.set_index('Date', inplace=True)
 
         # Keep relevant numeric columns
         numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-        hist = hist[numeric_cols].dropna()
+        
+        # Handle cases where some columns might be missing (e.g., crypto)
+        cols_to_use = [col for col in numeric_cols if col in hist.columns]
+        hist = hist[cols_to_use]
 
         # Remove duplicates & ensure numeric
         hist = hist.apply(pd.to_numeric, errors='coerce').dropna()
@@ -46,6 +49,7 @@ def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -
         return hist
 
     except Exception as e:
+        print(f"Error in get_price_history: {e}")
         return pd.DataFrame()
 
 
@@ -161,10 +165,11 @@ def get_headlines(topic: str = None, limit: int = 20):
 # ✅ WRAPPER FUNCTION FOR APP
 # ------------------------------------------------------------
 
-def get_stock_data(symbol: str):
+def get_stock_data(symbol: str, period: str = "2y", interval: str = "1d"):
     """
     Wrapper for app.py → fetches clean, ready-to-train stock data.
+    MODIFIED to accept period and interval.
     """
     ticker = resolve_ticker(symbol)
-    data = get_price_history(ticker)
+    data = get_price_history(ticker, period=period, interval=interval)
     return data

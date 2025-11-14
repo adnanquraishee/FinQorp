@@ -1,0 +1,265 @@
+/* --- "MODERN FINTECH" THEME --- */
+
+/* --- 1. GLOBAL & TYPOGRAPHY --- */
+
+/* Import a clean, professional font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
+:root {
+    --color-accent: #1ED760; /* Vibrant "Growth" Green */
+    --color-accent-faded: rgba(29, 215, 96, 0.1);
+    --color-bg: #0D1117;     /* Dark Charcoal */
+    --color-panel: #161B22;  /* Lighter Charcoal Panel */
+    --color-text: #E0E0E0;   /* Light Grey Text */
+    --color-text-header: #FFFFFF; /* Pure White Headers */
+    --color-text-muted: #8899AB; /* Muted Slate Grey */
+    --color-border: #30363D;  /* GitHub-style Border */
+}
+
+body, .stApp {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: 'Inter', 'sans-serif';
+    font-weight: 400;
+}
+
+/* All headers */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    color: var(--color-text-header);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+h2 { /* Page Titles */
+    font-size: 1.6em;
+    border-bottom: 2px solid var(--color-accent);
+    padding-bottom: 8px;
+    text-shadow: 0 0 5px var(--color-accent-faded);
+}
+h3 { /* Section Subheaders */
+    font-size: 1.2em;
+    font-weight: 700;
+    color: var(--color-accent);
+}
+
+/* Horizontal rule */
+hr {
+    border-top: 1px solid var(--color-border);
+}
+
+/* --- 2. ANIMATIONS --- */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- 3. MAIN LAYOUT & HEADER --- */
+
+.header-container {
+    text-align: center;
+    margin-top: -50px;
+    animation: fadeIn 0.5s ease-out;
+    margin-bottom: 20px;
+}
+
+.header-logo {
+    width: 220px; /* Adjust size as needed */
+    height: auto;
+    margin-bottom: 5px;
+    /* Professional green glow */
+    filter: drop-shadow(0 0 10px rgba(29, 215, 96, 0.4));
+    transition: all 0.3s ease;
+}
+
+.header-logo:hover {
+    filter: drop-shadow(0 0 15px rgba(29, 215, 96, 0.7));
+    transform: scale(1.02);
+}
+
+.header-subtitle {
+    color: var(--color-text-muted);
+    font-size: 1.1em;
+    margin-top: 5px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 400; 
+}
+
+/* --- 4. CONTENT WRAPPERS --- */
+
+/* Main content wrapper for page transitions */
+.content-wrapper, .page-container {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Main Data Panel */
+.data-panel {
+    background: var(--color-panel);
+    border: 1px solid var(--color-border);
+    border-radius: 6px; /* Standard professional radius */
+    padding: 25px;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    animation: fadeIn 0.6s ease-out;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); /* Subtle shadow */
+}
+
+.data-panel:hover {
+    border-color: #38424F;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* --- 5. WIDGETS (INPUT & BUTTONS) --- */
+
+/* Main search input */
+div[data-testid="stTextInput"] > div {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+div[data-testid="stTextInput"] > div:focus-within,
+div[data-testid="stTextInput"] > div:hover {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 8px rgba(29, 215, 96, 0.2);
+}
+input[data-testid="stTextInput"] {
+    color: var(--color-text-header);
+    font-family: 'Inter', sans-serif;
+}
+
+/* Button container */
+.nav-container {
+    animation: fadeIn 0.5s ease-out;
+    border: 1px solid var(--color-border);
+    border-radius: 4px 4px 0 0;
+    background: var(--color-panel);
+    padding: 10px;
+    padding-bottom: 0;
+}
+
+/* All buttons */
+button[data-testid="stButton"] {
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    border: 2px solid;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Primary Button (Active Nav, Analyze) */
+button[data-testid="stButton"][kind="primary"] { 
+    background-color: var(--color-accent);
+    color: #000000; /* Black text on green */
+    border-color: var(--color-accent);
+}
+button[data-testid="stButton"][kind="primary"]:hover {
+    background-color: #25F070; /* Lighter green on hover */
+    border-color: #25F070;
+    color: #000000;
+    transform: scale(1.01);
+}
+
+/* Secondary Button (Inactive Nav) */
+button[data-testid="stButton"][kind="secondary"] { 
+    background-color: transparent;
+    border: 2px solid var(--color-border);
+    color: var(--color-text-muted);
+}
+button[data-testid="stButton"][kind="secondary"]:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    background-color: var(--color-accent-faded);
+}
+
+/* --- 6. METRICS & DATA (AI Summary) --- */
+
+/* Styling for st.metric */
+.data-panel div[data-testid="stMetric"] {
+    background: transparent;
+    border: none;
+    border-left: 3px solid var(--color-border);
+    padding: 10px 15px;
+}
+
+/* Metric label (e.g., "Market Cap") */
+.data-panel div[data-testid="stMetricLabel"] {
+    color: var(--color-text-muted);
+    font-size: 0.9em;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+/* Metric value (e.g., "$1.2T") */
+.data-panel div[data-testid="stMetricValue"] {
+    color: var(--color-text-header);
+    font-size: 1.6em;
+    font-weight: 600;
+}
+
+/* Style the sub-headers (e.g., "Key Metrics") */
+.data-panel h3 {
+    font-size: 1.1em;
+    color: var(--color-text-header);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 5px;
+    margin-top: 15px;
+}
+
+/* Style the blockquotes (for Profile, Trend, etc.) */
+.data-panel blockquote {
+    border-left: 3px solid var(--color-accent);
+    margin-left: 5px;
+    padding-left: 15px;
+    font-style: italic;
+    color: var(--color-text);
+    background-color: var(--color-bg);
+    padding: 10px;
+    border-radius: 4px;
+}
+
+/* Style the "Analyst Insight" blockquote */
+.data-panel blockquote:last-of-type {
+    border-left-color: var(--color-accent);
+    background-color: var(--color-accent-faded);
+    font-style: normal;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* Style the Key Metrics table */
+.data-panel table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.data-panel th, .data-panel td {
+    border: 1px solid var(--color-border);
+    padding: 12px;
+    text-align: left;
+}
+
+.data-panel th {
+    background-color: var(--color-accent-faded);
+    color: var(--color-accent);
+    font-size: 0.9em;
+    font-weight: 700;
+}
+
+.data-panel td {
+    font-size: 0.95em;
+    background-color: var(--color-panel);
+}
+
+/* Make the left column of the table (Metric) bold */
+.data-panel td:nth-child(1), .data-panel td:nth-child(3) {
+    font-weight: 600;
+    color: var(--color-text-header);
+    width: 20%; 
+}
