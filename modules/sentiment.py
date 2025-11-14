@@ -11,6 +11,7 @@ nltk.download("vader_lexicon", quiet=True)
 _tokenizer = AutoTokenizer.from_pretrained("yiyanghkust/finbert-tone")
 _model = AutoModelForSequenceClassification.from_pretrained("yiyanghkust/finbert-tone")
 _labels = ["negative", "neutral", "positive"]
+_sia = SentimentIntensityAnalyzer() # Load VADER once
 
 def finbert_score(text):
     """Compute FinBERT sentiment score (-1 to 1)."""
@@ -23,6 +24,11 @@ def finbert_score(text):
     except Exception:
         return 0.0
 
+def _get_hybrid_score(text: str):
+    """Helper to get a single hybrid score for one headline."""
+    vader_score = _sia.polarity_scores(text)["compound"]
+    finbert_s = finbert_score(text)
+    return 0.7 * finbert_s + 0.3 * vader_score
 
 def analyze_sentiment(company_name: str):
     """
@@ -36,16 +42,10 @@ def analyze_sentiment(company_name: str):
         if not headlines:
             return "No recent headlines found.", None, 0.0
 
-        # Normalize text
         valid = []
         seen = set()
         for h in headlines:
-            title = ""
-            if isinstance(h, dict):
-                title = h.get("title", "") or ""
-            else:
-                title = str(h)
-            title = title.strip()
+            title = h.get("title", "").strip()
             if not title or len(title) < 8 or title in seen:
                 continue
             seen.add(title)
@@ -54,14 +54,8 @@ def analyze_sentiment(company_name: str):
         if not valid:
             return "No valid text headlines found.", None, 0.0
 
-        # Initialize analyzers
-        sia = SentimentIntensityAnalyzer()
-
-        vader_scores = [sia.polarity_scores(t)["compound"] for t in valid]
-        finbert_scores = [finbert_score(t) for t in valid]
-
-        # Combine (FinBERT weighted 0.7, VADER 0.3)
-        hybrid_scores = [0.7 * f + 0.3 * v for f, v in zip(finbert_scores, vader_scores)]
+        # Calculate hybrid scores
+        hybrid_scores = [_get_hybrid_score(t) for t in valid]
 
         avg_sentiment = np.mean(hybrid_scores)
         positive = sum(1 for s in hybrid_scores if s > 0.1)
@@ -125,8 +119,38 @@ def analyze_sentiment(company_name: str):
 
         plt.tight_layout(pad=1.0)
 
-        # --- MODIFICATION: Return the raw sentiment score ---
         return summary, fig, avg_sentiment
 
     except Exception as e:
         return f"Error analyzing sentiment: {e}", None, 0.0
+
+# --- NEW FUNCTION ---
+def get_headline_sentiment_list(headlines: list):
+    """
+    Takes a list of headline dicts and returns the same
+    list with a 'score' key added to each.
+    """
+    if not headlines:
+        return []
+
+    output_list = []
+    seen = set()
+    
+    for h in headlines:
+        title = h.get("title", "").strip()
+        
+        # Basic cleaning and deduplication
+        if not title or len(title) < 8 or title in seen:
+            continue
+        seen.add(title)
+        
+        # Calculate hybrid score
+        score = _get_hybrid_score(title)
+        
+        output_list.append({
+            "Headline": title,
+            "Score": score,
+            "Link": h.get("link", "#")
+        })
+    
+    return output_list

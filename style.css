@@ -276,3 +276,49 @@ button[data-testid="stButton"][kind="secondary"]:hover {
 #market-snapshot div[data-testid="stMetricLabel"] {
     font-size: 0.85em; /* Slightly reduce label font size */
 }
+
+
+/* --- 7. NEWS FEED (NEW) --- */
+
+/* Remove borders and background from dataframe */
+div[data-testid="stDataFrame"] {
+    border: none;
+}
+div[data-testid="stDataFrame"] > div {
+    background-color: var(--color-panel);
+}
+div[data-testid="stDataFrame"] .col-header, 
+div[data-testid="stDataFrame"] .blank {
+    background-color: var(--color-panel) !important;
+    border: none !important;
+}
+
+/* Style header row */
+div[data-testid="stDataFrame"] .col-header th {
+    font-size: 0.9em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border-bottom: 2px solid var(--color-accent) !important;
+}
+
+/* Style data rows */
+div[data-testid="stDataFrame"] .data-row {
+    border-bottom: 1px solid var(--color-border) !important;
+}
+div[data-testid="stDataFrame"] .data-row:last-child {
+    border-bottom: none !important;
+}
+
+/* Style cells */
+div[data-testid="stDataFrame"] .data-row td {
+    padding: 10px 5px !important;
+    color: var(--color-text);
+}
+div[data-testid="stDataFrame"] .data-row td a {
+    color: var(--color-text-header);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+div[data-testid="stDataFrame"] .data-row td a:hover {
+    color: var(--color-accent);
+}

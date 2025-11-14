@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from modules import fundamentals
+from modules import correlation # Import the new module
 
 # =====================================================
 # ✅ Utility: Convert string metrics to float safely
@@ -24,7 +25,7 @@ def safe_to_float(val):
 # =====================================================
 # ✅ Core Comparison Function — Modular 2x2 Layout (Revised)
 # =====================================================
-def compare_companies(resolved_symbols): # Renamed for clarity
+def compare_companies(resolved_symbols):
     """
     Compare multiple companies' financial fundamentals visually and analytically.
     Assumes it receives a list of ALREADY RESOLVED tickers.
@@ -37,10 +38,8 @@ def compare_companies(resolved_symbols): # Renamed for clarity
     # 2. FETCH FUNDAMENTALS FOR RESOLVED TICKERS
     for ticker in resolved_symbols:
         try:
-            # --- FIX: Unpack 3 values (data, figs, profile_info) ---
             data, _, _ = fundamentals.get_fundamentals(ticker)
             
-            # Check for generic data fetch error (e.g., ticker not found)
             if "Error" in data:
                 print(f"Skipping {ticker}: {data['Error']}")
                 continue
