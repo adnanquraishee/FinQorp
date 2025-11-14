@@ -4,22 +4,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # =========================================================
-# 🔹 Helper Functions (Copied from insights.py for formatting)
+# 🔹 Helper Functions
 # =========================================================
 
-def _format_large_number(num):
+def _format_large_number(num, currency_symbol="$"):
     """Formats large numbers (e.g., Market Cap) into B/T."""
     if pd.isna(num) or num == "N/A": return "N/A"
     try:
         num = float(num)
+        # Use the passed currency_symbol instead of hardcoded '$'
         if abs(num) > 1_000_000_000_000:
-            return f"${num / 1_000_000_000_000:.2f}T"
+            return f"{currency_symbol}{num / 1_000_000_000_000:.2f}T"
         elif abs(num) > 1_000_000_000:
-            return f"${num / 1_000_000_000:.2f}B"
+            return f"{currency_symbol}{num / 1_000_000_000:.2f}B"
         elif abs(num) > 1_000_000:
-            return f"${num / 1_000_000:.2f}M"
+            return f"{currency_symbol}{num / 1_000_000:.2f}M"
         else:
-            return f"${num:,.2f}"
+            return f"{currency_symbol}{num:,.2f}"
     except (ValueError, TypeError):
         return "N/A"
 
@@ -35,7 +36,7 @@ def _format_ratio(num, is_percent=False):
         return "N/A"
 
 # =============================================================
-# ✅ REVISED UNIVERSAL FUNDAMENTALS WITH DYNAMIC CURRENCY
+# ✅ REVISED UNIVERSAL FUNDAMENTALS
 # =============================================================
 def get_fundamentals(ticker_symbol: str):
     """
@@ -67,7 +68,8 @@ def get_fundamentals(ticker_symbol: str):
         currency_symbol = "$" # Default
         if currency_code != "USD":
             currency_map = {"INR": "₹", "CAD": "C$", "EUR": "€", "GBP": "£", "JPY": "¥", "AUD": "A$"}
-            currency_symbol = currency_map.get(currency_code.upper(), f"{currency_code} ")
+            # Fallback to the code if not in map (e.g., "SEK ")
+            currency_symbol = currency_map.get(currency_code.upper(), f"{currency_code.upper()} ")
 
         # =============================================================
         # 🔹 Get Current Price
@@ -98,12 +100,12 @@ def get_fundamentals(ticker_symbol: str):
         de_ratio = info.get("debtToEquity")
 
         # =============================================================
-        # 🔹 Full Metrics Dictionary (NOW 12 METRICS)
+        # 🔹 Full Metrics Dictionary
         # =============================================================
         metrics = {
             "Current Price": f"{currency_symbol}{_format_ratio(current_price)}",
-            "Market Cap": _format_large_number(info.get('marketCap')),
-            "Revenue (TTM)": _format_large_number(info.get('totalRevenue')),
+            "Market Cap": _format_large_number(info.get('marketCap'), currency_symbol),
+            "Revenue (TTM)": _format_large_number(info.get('totalRevenue'), currency_symbol),
             "Profit Margin": _format_ratio(info.get('profitMargins'), is_percent=True),
             "P/E Ratio": _format_ratio(info.get("trailingPE")),
             "Forward P/E": _format_ratio(info.get("forwardPE")),
@@ -132,19 +134,19 @@ def get_fundamentals(ticker_symbol: str):
         # =============================================================
         figs = {}
         
-        # --- THEME COLORS (MODERN FINTECH) ---
-        BG_COLOR = "#161B22" # Lighter Charcoal Panel
+        # --- THEME COLORS (SLATE & SAPPHIRE) ---
+        BG_COLOR = "#121A2A" # Dark Panel Blue
         TEXT_COLOR = "#FFFFFF"
-        ACCENT_COLOR = "#1ED760" # Vibrant Green
-        ACCENT_ALT = "#3084F2" # Data Blue
+        ACCENT_COLOR = "#0D6EFD" # Sapphire Blue
+        ACCENT_ALT = "#00FFFF" # Cyan
         BORDER_COLOR = "#30363D"
 
         # 1️⃣ Revenue vs Net Income
         try:
             if not fin.empty and "totalrevenue" in fin.columns and "netincome" in fin.columns:
                 fig1, ax1 = plt.subplots(figsize=(5, 2.5))
-                ax1.plot(fin.index, fin["totalrevenue"] / 1e9, label="Revenue (B$)", color=ACCENT_COLOR, linewidth=2)
-                ax1.plot(fin.index, fin["netincome"] / 1e9, label="Net Income (B$)", color=ACCENT_ALT, linewidth=2, linestyle='--')
+                ax1.plot(fin.index, fin["totalrevenue"] / 1e9, label=f"Revenue (B{currency_symbol})", color=ACCENT_COLOR, linewidth=2)
+                ax1.plot(fin.index, fin["netincome"] / 1e9, label=f"Net Income (B{currency_symbol})", color=ACCENT_ALT, linewidth=2, linestyle='--')
                 ax1.legend(facecolor=BG_COLOR, labelcolor=TEXT_COLOR, fontsize=7)
                 ax1.set_facecolor(BG_COLOR)
                 fig1.patch.set_facecolor(BG_COLOR)
@@ -164,7 +166,7 @@ def get_fundamentals(ticker_symbol: str):
                 ax2.bar(cf.index, cf["totalcashfromoperatingactivities"] / 1e9, color=ACCENT_COLOR)
                 ax2.set_facecolor(BG_COLOR)
                 fig2.patch.set_facecolor(BG_COLOR)
-                ax2.set_title(f"{ticker_symbol} Operating Cash Flow (B$)", color=TEXT_COLOR, fontsize=9)
+                ax2.set_title(f"{ticker_symbol} Operating Cash Flow (B{currency_symbol})", color=TEXT_COLOR, fontsize=9)
                 ax2.tick_params(colors=TEXT_COLOR, rotation=25)
                 for spine in ax2.spines.values():
                     spine.set_color(BORDER_COLOR)
@@ -183,10 +185,10 @@ def get_fundamentals(ticker_symbol: str):
                 fig3, ax3 = plt.subplots(figsize=(3.5, 2))
                 ax3.bar(["Assets", "Liabilities", "Equity"], 
                         [assets / 1e9, liab / 1e9, equity / 1e9],
-                        color=[ACCENT_ALT, "#D40000", ACCENT_COLOR]) # Blue, Red, Green
+                        color=[ACCENT_COLOR, "#D40000", ACCENT_ALT]) # Blue, Red, Cyan
                 ax3.set_facecolor(BG_COLOR)
                 fig3.patch.set_facecolor(BG_COLOR)
-                ax3.set_title("Balance Sheet (B$)", color=TEXT_COLOR, fontsize=9)
+                ax3.set_title(f"Balance Sheet (B{currency_symbol})", color=TEXT_COLOR, fontsize=9)
                 ax3.tick_params(colors=TEXT_COLOR)
                 for spine in ax3.spines.values():
                     spine.set_color(BORDER_COLOR)
@@ -195,6 +197,7 @@ def get_fundamentals(ticker_symbol: str):
         except Exception as e:
             pass
 
+        # --- FIX: Return all 3 items ---
         return metrics, figs, profile_info
 
     except Exception as e:

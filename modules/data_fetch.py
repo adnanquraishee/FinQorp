@@ -1,3 +1,4 @@
+import streamlit as st # Import Streamlit for caching
 import yfinance as yf
 import pandas as pd
 from GoogleNews import GoogleNews
@@ -32,14 +33,12 @@ def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -
 
         # Ensure DatetimeIndex
         hist.reset_index(inplace=True)
-        # --- MODIFICATION: Format date for cleaner table display ---
         hist['Date'] = pd.to_datetime(hist['Date']).dt.strftime('%Y-%m-%d')
         hist.set_index('Date', inplace=True)
 
         # Keep relevant numeric columns
         numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
         
-        # Handle cases where some columns might be missing (e.g., crypto)
         cols_to_use = [col for col in numeric_cols if col in hist.columns]
         hist = hist[cols_to_use]
 
@@ -58,7 +57,6 @@ def get_price_history(ticker: str, period: str = "24mo", interval: str = "1d") -
 # ------------------------------------------------------------
 
 def get_financials(ticker: str):
-    # ... (existing content of get_financials remains the same)
     """Fetch company financials using yfinance."""
     try:
         t = yf.Ticker(ticker)
@@ -72,11 +70,11 @@ def get_financials(ticker: str):
 
 
 # ------------------------------------------------------------
-# ✅ NEWS HEADLINES FETCH
+# ✅ NEWS HEADLINES FETCH (MODIFIED)
 # ------------------------------------------------------------
 
+@st.cache_data(ttl=900) # --- MODIFICATION: Cache news for 15 minutes ---
 def get_headlines(topic: str = None, limit: int = 20):
-    # ... (existing content of get_headlines remains the same)
     """
     Fetch latest Google News headlines.
     Cleans up empty, duplicate, or invalid results.
@@ -96,7 +94,6 @@ def get_headlines(topic: str = None, limit: int = 20):
                 title = item.get("title", "").strip()
                 link = item.get("link", "#").strip()
 
-                # ✅ Clean: remove blanks, weird URLs, or malformed titles
                 if (
                     not title
                     or title.lower().startswith("http")
@@ -168,8 +165,50 @@ def get_headlines(topic: str = None, limit: int = 20):
 def get_stock_data(symbol: str, period: str = "2y", interval: str = "1d"):
     """
     Wrapper for app.py → fetches clean, ready-to-train stock data.
-    MODIFIED to accept period and interval.
     """
     ticker = resolve_ticker(symbol)
     data = get_price_history(ticker, period=period, interval=interval)
     return data
+
+# ------------------------------------------------------------
+# ✅ MARKET DATA FUNCTION
+# ------------------------------------------------------------
+
+@st.cache_data(ttl=900) # Cache for 15 minutes
+def get_market_data(tickers: list):
+    """
+    Fetches 2-day data for a list of tickers to get current price and % change.
+    """
+    try:
+        data = yf.download(tickers, period="5d", interval="1d", auto_adjust=True)
+        if data.empty:
+            return {}
+            
+        close_data = data['Close']
+        if len(close_data) < 2:
+            return {} 
+            
+        latest_price = close_data.iloc[-1]
+        prev_price = close_data.iloc[-2]
+        
+        pct_change = ((latest_price - prev_price) / prev_price) * 100
+        
+        market_data = {}
+        if isinstance(latest_price, pd.Series):
+            for ticker in tickers:
+                if ticker in latest_price and ticker in pct_change:
+                    market_data[ticker] = {
+                        "price": latest_price[ticker],
+                        "change": pct_change[ticker]
+                    }
+        else: 
+            ticker = tickers[0]
+            market_data[ticker] = {
+                "price": latest_price,
+                "change": pct_change
+            }
+
+        return market_data
+    except Exception as e:
+        print(f"Error in get_market_data: {e}")
+        return {}

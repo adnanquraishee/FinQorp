@@ -28,13 +28,13 @@ def analyze_sentiment(company_name: str):
     """
     Analyze recent news sentiment for a company using both
     VADER (lexical) and FinBERT (contextual financial) models.
-    Returns (summary string, matplotlib figure).
+    Returns (summary string, matplotlib figure, avg_sentiment float).
     """
     try:
         headlines = data_fetch.get_headlines(company_name)
 
         if not headlines:
-            return "No recent headlines found.", None
+            return "No recent headlines found.", None, 0.0
 
         # Normalize text
         valid = []
@@ -52,7 +52,7 @@ def analyze_sentiment(company_name: str):
             valid.append(title)
 
         if not valid:
-            return "No valid text headlines found.", None
+            return "No valid text headlines found.", None, 0.0
 
         # Initialize analyzers
         sia = SentimentIntensityAnalyzer()
@@ -72,13 +72,13 @@ def analyze_sentiment(company_name: str):
         # Tone label
         if avg_sentiment > 0.05:
             tone = "Bullish 😄"
-            color = "#32D600"
+            color = "#1ED760" # Green
         elif avg_sentiment < -0.05:
             tone = "Bearish 😞"
-            color = "#D40000"
+            color = "#D40000" # Red
         else:
             tone = "Neutral 😐"
-            color = "#FFCB20"
+            color = "#FFC107" # Gold
 
         summary = (
             f"**Company Sentiment — {company_name}**\n\n"
@@ -92,6 +92,8 @@ def analyze_sentiment(company_name: str):
 
         # ---- Visualization (Side-by-Side Bar + Pie) ----
         fig, axes = plt.subplots(1, 2, figsize=(8.5, 2.3))
+        fig.patch.set_facecolor("#121A2A") # Panel BG
+        
         # Bar
         ax = axes[0]
         ax.barh([0], [avg_sentiment], color=color, height=0.35)
@@ -100,16 +102,16 @@ def analyze_sentiment(company_name: str):
         ax.set_xticks([-1, 0, 1])
         ax.set_xticklabels(["Bearish", "Neutral", "Bullish"], color="white", fontsize=8)
         ax.set_title(f"Sentiment Index — {tone}", color="white", fontsize=9)
-        ax.set_facecolor("black")
+        ax.set_facecolor("#121A2A")
         for spine in ax.spines.values():
-            spine.set_color("white")
-        ax.grid(True, color="#333333", alpha=0.25)
+            spine.set_color("#30363D")
+        ax.grid(True, color="#30363D", alpha=0.25)
 
         # Pie
         ax2 = axes[1]
         sizes = [positive, neutral, negative]
         labels = ["Positive", "Neutral", "Negative"]
-        colors = ["#32D600", "#FFCB20", "#D40000"]
+        colors = ["#1ED760", "#FFC107", "#D40000"]
         ax2.pie(
             sizes,
             labels=labels,
@@ -119,12 +121,12 @@ def analyze_sentiment(company_name: str):
             textprops={"color": "white", "fontsize": 8},
         )
         ax2.set_title("Sentiment Breakdown", color="white", fontsize=9)
-        ax2.set_facecolor("black")
+        ax2.set_facecolor("#121A2A")
 
-        fig.patch.set_facecolor("black")
         plt.tight_layout(pad=1.0)
 
-        return summary, fig
+        # --- MODIFICATION: Return the raw sentiment score ---
+        return summary, fig, avg_sentiment
 
     except Exception as e:
-        return f"Error analyzing sentiment: {e}", None
+        return f"Error analyzing sentiment: {e}", None, 0.0

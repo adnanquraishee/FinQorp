@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from modules import fundamentals
-# IMPORT NEW RESOLVER MODULE
-from modules import ticker_resolver 
 
 # =====================================================
 # ✅ Utility: Convert string metrics to float safely
@@ -26,39 +24,21 @@ def safe_to_float(val):
 # =====================================================
 # ✅ Core Comparison Function — Modular 2x2 Layout (Revised)
 # =====================================================
-def compare_companies(input_symbols):
+def compare_companies(resolved_symbols): # Renamed for clarity
     """
     Compare multiple companies' financial fundamentals visually and analytically.
-    Applies ticker resolution to all input symbols before fetching data.
+    Assumes it receives a list of ALREADY RESOLVED tickers.
     """
-    if not input_symbols or len(input_symbols) < 2:
+    if not resolved_symbols or len(resolved_symbols) < 2:
         return "Please enter at least two companies or tickers for comparison.", None, None
 
     metrics_list = []
-    resolved_tickers = []
-    
-    # 1. RESOLVE ALL TICKERS BEFORE FETCHING DATA
-    for symbol_input in input_symbols:
-        symbol_upper = symbol_input.upper().strip()
-        final_ticker = symbol_upper
-        
-        # Use the universal network resolver
-        resolved = ticker_resolver.resolve_ticker_from_name(symbol_input)
-        
-        if resolved:
-            final_ticker = resolved.upper().strip()
-        
-        # Only proceed if the ticker has not been processed and it's not a clear failure (long name)
-        # We rely on the robustness of the resolver, if it fails, we assume the user entered the ticker directly
-        if final_ticker not in resolved_tickers:
-            resolved_tickers.append(final_ticker)
-
     
     # 2. FETCH FUNDAMENTALS FOR RESOLVED TICKERS
-    for ticker in resolved_tickers:
+    for ticker in resolved_symbols:
         try:
-            # We use the resolved ticker here
-            data, _ = fundamentals.get_fundamentals(ticker)
+            # --- FIX: Unpack 3 values (data, figs, profile_info) ---
+            data, _, _ = fundamentals.get_fundamentals(ticker)
             
             # Check for generic data fetch error (e.g., ticker not found)
             if "Error" in data:
@@ -77,11 +57,10 @@ def compare_companies(input_symbols):
             continue
 
     if not metrics_list:
-        return "No valid financial data available for comparison after attempting resolution.", None, None
+        return "No valid financial data available for comparison.", None, None
 
     df = pd.DataFrame(metrics_list).set_index("Ticker")
     
-    # --- Check for minimum data points (optional, but good practice) ---
     if len(df) < 2:
          return "Comparison requires at least two companies with valid data.", None, None
 
@@ -93,24 +72,30 @@ def compare_companies(input_symbols):
     fig, axes = plt.subplots(2, 2, figsize=(11, 6))
     axes = axes.flatten()
 
+    # --- THEME COLORS (SLATE & SAPPHIRE) ---
+    BG_COLOR = "#121A2A"
+    TEXT_COLOR = "#FFFFFF"
+    ACCENT_COLOR = "#0D6EFD"
+    BORDER_COLOR = "#30363D"
+
     for i, metric in enumerate(metrics_to_plot):
         ax = axes[i]
         valid_df = df.dropna(subset=[metric])
         if valid_df.empty:
             ax.text(0.5, 0.5, f"No valid data\nfor {metric}",
                     color="gray", ha="center", va="center", fontsize=9)
-            ax.set_facecolor("black")
+            ax.set_facecolor(BG_COLOR)
             for spine in ax.spines.values():
-                spine.set_color("white")
+                spine.set_color(BORDER_COLOR)
             continue
 
-        bars = ax.bar(valid_df.index, valid_df[metric], color="#32D600", alpha=0.9)
-        ax.set_title(metric, color="white", fontsize=10)
-        ax.set_facecolor("black")
-        fig.patch.set_facecolor("black")
-        ax.tick_params(colors="white")
+        bars = ax.bar(valid_df.index, valid_df[metric], color=ACCENT_COLOR, alpha=0.9)
+        ax.set_title(metric, color=TEXT_COLOR, fontsize=10)
+        ax.set_facecolor(BG_COLOR)
+        fig.patch.set_facecolor(BG_COLOR)
+        ax.tick_params(colors=TEXT_COLOR)
         for spine in ax.spines.values():
-            spine.set_color("white")
+            spine.set_color(BORDER_COLOR)
 
         # Add value labels
         for bar, val in zip(bars, valid_df[metric]):
@@ -123,9 +108,9 @@ def compare_companies(input_symbols):
     # 💡 AI Comparative Insight
     # =====================================================
     try:
-        top_roe = df["ROE"].idxmax() if df["ROE"].notna().any() else None
-        top_pm = df["Profit Margin"].idxmax() if df["Profit Margin"].notna().any() else None
-        low_de = df["Debt-to-Equity"].idxmin() if df["Debt-to-Equity"].notna().any() else None
+        top_roe = df["ROE"].idxmax() if df["ROE"].notna().any() else "N/A"
+        top_pm = df["Profit Margin"].idxmax() if df["Profit Margin"].notna().any() else "N/A"
+        low_de = df["Debt-to-Equity"].idxmin() if df["Debt-to-Equity"].notna().any() else "N/A"
 
         summary = (
             f"**AI Comparative Insight:**\n\n"
@@ -133,8 +118,6 @@ def compare_companies(input_symbols):
             f"💰 **{top_pm}** exhibits the highest profit margins, highlighting operational efficiency.\n"
             f"⚖️ **{low_de}** maintains the lowest debt levels, signaling solid financial stability.\n\n"
             f"Overall, the companies display distinct risk–reward and profitability profiles."
-            if top_roe and top_pm and low_de else
-            "Not enough consistent data for a detailed comparative insight."
         )
     except Exception:
         summary = "Could not generate comparative insight."
