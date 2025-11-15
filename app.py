@@ -2,7 +2,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 # All custom modules must be present in the project directory
 # --- MODIFICATION: Fixed imports ---
-from modules import data_fetch, sentiment, forecast, fundamentals, insights, compare, recommendation, ticker_resolver, technicals, correlation
+from modules import data_fetch, sentiment, forecast, fundamentals, insights, compare, recommendation, ticker_resolver, technicals
 
     
 import traceback, base64, os
@@ -551,15 +551,6 @@ with main_container:
                     st.markdown(summary)
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    st.subheader("Correlation Matrix")
-                    st.markdown('<div class="panel">', unsafe_allow_html=True)
-                    with st.spinner("Calculating correlation..."):
-                        corr_fig = correlation.generate_correlation_heatmap(resolved_symbols)
-                        if corr_fig:
-                            st.pyplot(corr_fig)
-                        else:
-                            st.warning("Could not generate a correlation matrix. This often happens when comparing stocks from different global exchanges (e.g., .NS and .L) that do not have overlapping trading days.")
-                    st.markdown('</div>', unsafe_allow_html=True)
 
 
         # --- BLOCK 5: Default Page (Market Overview) ---

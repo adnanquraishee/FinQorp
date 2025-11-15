@@ -2,8 +2,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from modules import fundamentals
-from modules import correlation # Import the new module
+from modules import fundamentals # Import the new module
 
 # =====================================================
 # ✅ Utility: Convert string metrics to float safely
