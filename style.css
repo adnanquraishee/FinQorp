@@ -1,0 +1,242 @@
+/* --- GLOBAL SETTINGS --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+:root {
+    --bg-color: #0a0e17;
+    --panel-bg: rgba(23, 32, 50, 0.7);
+    --text-primary: #e0e6ed;
+    --text-secondary: #94a3b8;
+    --accent-primary: #00ced9;
+    /* Cyan Neon */
+    --accent-secondary: #4361ee;
+    /* Electric Blue */
+    --success-color: #00ff9d;
+    --danger-color: #ff4757;
+    --warning-color: #ffb703;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.08);
+    --shadow-lg: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Main App Background */
+.stApp {
+    background-color: var(--bg-color);
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+}
+
+/* --- TYPOGRAPHY --- */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    letter-spacing: -0.5px;
+}
+
+p,
+span,
+div {
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+}
+
+/* --- SIDEBAR --- */
+section[data-testid="stSidebar"] {
+    background-color: #0f1522;
+    border-right: var(--glass-border);
+}
+
+.sidebar-header {
+    text-align: center;
+    padding: 20px 0;
+    margin-bottom: 20px;
+}
+
+.sidebar-logo {
+    width: 100%;
+    height: auto;
+    max-height: 80px;
+    margin-bottom: 10px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px var(--accent-secondary));
+}
+
+.sidebar-header p {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    letter-spacing: 2px;
+    margin: 0;
+}
+
+/* Button Styling in Sidebar */
+.stButton button {
+    background: linear-gradient(135deg, #2d4bb8 0%, #008cac 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    text-align: center;
+    padding: 10px 20px;
+    box-shadow: 0 4px 15px rgba(45, 75, 184, 0.3);
+}
+
+.stButton button:hover {
+    background: linear-gradient(135deg, #1e0670 0%, #2d4bb8 100%);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(45, 75, 184, 0.5);
+}
+
+/* --- METRIC CARDS --- */
+.metric-card {
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: var(--glass-border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 242, 255, 0.15);
+    border-color: rgba(0, 242, 255, 0.3);
+}
+
+.metric-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.metric-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(90deg, #fff, #077d8a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* --- CONTAINERS --- */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: var(--panel-bg);
+    border: var(--glass-border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(10px);
+}
+
+/* --- INPUT FIELDS --- */
+.stTextInput input {
+    background-color: rgba(15, 21, 34, 0.8);
+    color: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+}
+
+.stTextInput input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(0, 242, 255, 0.2);
+}
+
+/* --- DATAFRAMES & TABLES --- */
+.stDataFrame,
+.stTable {
+    background: transparent !important;
+}
+
+[data-testid="stDataFrame"] {
+    background: transparent !important;
+}
+
+/* Table Header */
+[data-testid="stDataFrame"] th,
+[data-testid="stTable"] th {
+    background-color: #0f1522 !important;
+    color: var(--accent-primary) !important;
+    font-weight: 600 !important;
+    border-bottom: 1px solid var(--accent-secondary) !important;
+}
+
+/* Table Cells */
+[data-testid="stDataFrame"] td,
+[data-testid="stTable"] td {
+    background-color: rgba(23, 32, 50, 0.4) !important;
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Hover Effect on Rows */
+[data-testid="stDataFrame"] tr:hover td,
+[data-testid="stTable"] tr:hover td {
+    background-color: rgba(67, 97, 238, 0.1) !important;
+}
+
+/* --- HIDE TOP HEADER --- */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    visibility: hidden !important;
+}
+
+/* Adjust top padding since header is hidden */
+.main .block-container {
+    padding-top: 2rem !important;
+}
+
+/* --- SCROLLBAR --- */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0e17;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-secondary);
+}
+
+/* --- ALERTS --- */
+.stAlert {
+    background-color: rgba(255, 183, 3, 0.1);
+    border: 1px solid rgba(255, 183, 3, 0.3);
+    color: #ffb703;
+    border-radius: 10px;
+}
+
+/* --- MARKET SNAPSHOT --- */
+#market-snapshot .stMetric {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+#market-snapshot .stMetric:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--accent-primary);
+}

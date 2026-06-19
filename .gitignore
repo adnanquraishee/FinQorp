@@ -1,0 +1,55 @@
+# Virtual environments
+venv/
+.venv/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE / editor settings
+.vscode/
+.idea/
+
+# Python package cache
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Jupyter / Streamlit / temp data
+.ipynb_checkpoints/
+
+
+# Model and large data files
+*.h5
+*.pkl
+*.csv
+*.xlsx
+*.db
+*.pdf
+*.jpg
+*.png
+
+# Ensure the app logo is not ignored
+!finqorp_logo.png
+
+# TensorFlow / Torch compiled files
+*.ckpt
+*.pb
+*.pt
+*.pth
+
+# Other auto-generated artifacts
+__pycache__/
+
